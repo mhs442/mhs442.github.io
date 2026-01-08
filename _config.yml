@@ -1,27 +1,26 @@
 # Site settings
-title:          Tale
-description:    "Minimal Jekyll theme for storytellers"
-baseurl:        ""
-url:            "https://chesterhow.github.io"
+title:          빵부자장발장
+description:    "빵부자장발장의 저장창고"
+url:            https://mhs442.github.io
 
 # Google Analytics
-google_analytics: UA—XXXXXXXX-X
+#google_analytics: UA—XXXXXXXX-X
 
 # Author
-author:
-  name:         Chester How
-  url:          https://chester.how
-  email:        chesterhow@gmail.com
+#author:
+#  name:         Chester How
+#  url:          https://chester.how
+#  email:        chesterhow@gmail.com
 
 # Build settings
-markdown:       kramdown
-include:
-  - _pages
+#markdown:       kramdown
+#include:
+#  - _pages
 
 # Assets
-sass:
-  sass_dir:     _sass
-  style:        compressed
+#sass:
+#  sass_dir:     _sass
+#  style:        compressed
 
 # Gems
 plugins:
@@ -38,4 +37,7 @@ paginate:       5
 exclude: [ Gemfile, Gemfile.lock, tale.gemspec ]
 
 # Disqus (Set to your disqus id)
-disqus:         jekyll-tale
+#disqus:         jekyll-tale
+
+footer:
+  string: ""
