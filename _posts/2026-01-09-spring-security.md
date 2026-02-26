@@ -765,6 +765,49 @@ public class SecurityConfig {
 
 이렇게 조금 막장(?) 으로 Spring Security를 만들어 보았는데 사실 그냥 내 욕심으로 어디까지 바꿀 수 있나를 실험해 본 결과인 것 같다.
 
+그런데 돌이켜보면 이 방식에는 꽤 심각한 문제들이 있다. 동작은 하지만 실제 서비스라면 절대 이렇게 쓰면 안 된다.
+
+<br>
+
+### ⚠️ 이 방식의 문제점
+
+**1. UserDetailsService를 구현했는데 Spring Security가 실제로 쓰지 않는다**
+
+`LoginService`가 `UserDetailsService`를 구현하고 있지만, `formLogin`을 disable했기 때문에 `DaoAuthenticationProvider`가 동작하지 않는다. 결국 `loadUserByUsername`은 Spring Security가 호출하는 게 아니라 `login()` 메서드에서 직접 호출하고 있다. 인터페이스를 구현한 의미가 없어진 셈이다.
+
+<br>
+
+**2. 사실 email 로그인은 formLogin을 끄지 않아도 됐다**
+
+email 필드 이름이 `username`이 아니라서 어쩔 수 없다고 생각했는데, Spring Security는 이걸 설정 하나로 해결할 수 있다.
+
+```java
+.formLogin(form -> form
+    .loginPage("/login")
+    .usernameParameter("email")  // 파라미터 이름만 바꿔주면 끝
+    .loginProcessingUrl("/login")
+    .permitAll()
+)
+```
+
+이렇게 하면 `LoginController`의 `POST /login`, `LoginService.login()`이 전부 필요 없고, `loadUserByUsername`만 제대로 구현하면 Spring Security가 인증을 알아서 처리해준다.
+
+<br>
+
+**3. CSRF를 꺼버렸다**
+
+`csrf(AbstractHttpConfigurer::disable)`로 CSRF 보호를 비활성화했는데, 이 상태에서 HTML form이 CSRF 토큰 없이 POST 요청을 보내고 있다. 실제 서비스라면 악의적인 사이트가 사용자 모르게 로그인 요청을 보낼 수 있는 CSRF 공격에 그대로 노출된다.
+
+<br>
+
+**4. 세션 고정 공격(Session Fixation)에 취약하다**
+
+Spring Security의 `formLogin`을 정상적으로 사용하면 로그인 성공 시 자동으로 새 세션을 발급해서 세션 고정 공격을 막아준다. 그런데 `request.getSession(true)`로 직접 세션을 가져오면 로그인 전후로 세션 ID가 그대로 유지될 수 있고, 공격자가 미리 심어둔 세션 ID를 이용해 인증된 세션을 탈취할 수 있다.
+
+<br>
+
+정리하면, 이 구현은 **Spring Security를 가져다 놓고 정작 Spring Security가 제공하는 보안 기능은 대부분 직접 꺼버린** 형태다. 동작은 하지만 보안적으로는 직접 구현한 코드에 전적으로 의존하고 있는 셈이다.
+
 다음 글에는 조금 더 Spring Security를 적극적으로 활용해서 세션 기반이 아닌, JWT 토큰 방식으로 로그인 하는 방법을 가져오겠다.
 
 <br>
