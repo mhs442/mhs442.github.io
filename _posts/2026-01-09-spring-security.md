@@ -39,7 +39,7 @@ Spring Security는 Spring Boot 애플리케이션의 인증(Authentication), 인
 
 Spring Security의 간단한 구조를 먼저 살펴보자.
 
-<img src="/assets/img/spring-security-arch.png" width="600" height="400">
+<img src="/assets/img/spring-security/spring-security-arch.png" width="600" height="400">
 
 위 그림을 천천히 보면 어렵지 않게 동작 방식을 알 수 있다.
 
@@ -521,7 +521,7 @@ SecurityFilter 메서드의 내부에 `auth.requestMatchers("/login")` 부분에
 
 <br>
 
-<img src="/assets/img/spring-security-login-page.png" width="600" height="400">
+<img src="/assets/img/spring-security/spring-security-login-page.png" width="600" height="400">
 
 <br>
 
@@ -747,7 +747,7 @@ public class SecurityConfig {
 
 <br>
 
-<img src="/assets/img/spring-security-custom-login-page.png" width="600" height="400">
+<img src="/assets/img/spring-security/spring-security-custom-login-page.png" width="600" height="400">
 
 <br>
 
@@ -755,7 +755,7 @@ public class SecurityConfig {
 
 <br>
 
-<img src="/assets/img/spring-security-custom-home-page.png" width="600" height="400">
+<img src="/assets/img/spring-security/spring-security-custom-home-page.png" width="600" height="400">
 
 <br>
 
