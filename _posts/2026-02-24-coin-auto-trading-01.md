@@ -184,3 +184,5 @@ PATTERN_HISTORY  → 패턴 단계 히스토리 - 스냅샷 형태
 다음 글에서는 개발자의 꽃, DB 설계 과정을 다뤄볼 예정이다.
 
 <br>
+
+[2편 보러가기](https://mhs442.github.io/2026-02-27/coin-auto-trading-02)
