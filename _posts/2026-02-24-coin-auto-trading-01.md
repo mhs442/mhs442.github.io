@@ -169,7 +169,7 @@ PATTERN_HISTORY  → 패턴 단계 히스토리 - 스냅샷 형태
 
 엔터티 간의 관계를 조금만 가져와보면 다음과 같다.
 
-- `User`는 여러 `PATTERN_QUEUE`를 가질 수 있다 (1:N)
+- `USERS`는 여러 `PATTERN_QUEUE`를 가질 수 있다 (1:N)
 - `PATTERN_QUEUE`는 여러 `PATTERN_STEP`을 가질 수 있다 (1:N)
 
 <br>
