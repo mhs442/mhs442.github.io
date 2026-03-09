@@ -58,6 +58,27 @@ PATTERN_HISTORY  → 패턴 단계 히스토리 - 스냅샷 형태
 
 <br>
 
+그리고 각 엔터티 간의 관계 차수는 다음과 같다.
+
+<br>
+
+```
+USERS (1) ──── (N) PATTERN_QUEUE        사용자 한 명이 여러 패턴 큐를 등록
+PATTERN_QUEUE (1) ──── (N, max 20) PATTERN_STEP    패턴 큐 하나에 최대 20단계
+PATTERN_STEP (1) ──── (N, max 2) PATTERN          패턴 단계 하나에 최대 2개의 패턴
+PATTERN (1) ──── (N, max 5) PATTERN_BLOCK           패턴 하나에 최대 5개의 블록
+```
+
+<br>
+
+단순히 `1:N` 으로만 표현하면 "얼마나 많은 N인데?" 라는 의문이 남기 때문에 제약사항을 함께 명시했다. 최대 단계 수나 블록 수 같은 제약은 비즈니스 규칙에서 나온 것인데, 이걸 ERD 단계에서부터 드러내야 나중에 화면 설계나 검증 로직을 만들 때 헷갈리지 않는다.
+
+<br>
+
+TRADE_HISTORY와 PATTERN_HISTORY는 스냅샷 방식으로 원본 데이터와 독립적으로 관리되기 때문에 FK 관계를 맺지 않았다. 원본이 삭제되더라도 거래 기록은 남아야 하니까.
+
+<br>
+
 우선 로그인은 휴대폰 번호를 이용한 로그인을 만들려 한다. 어차피 프로토타입 개발 형태이기 때문에 나중에 휴대폰이 아닌 다른 로그인 방식을 이용하면 된다.
 (OAuth2.0 을 사용할 수도..?)
 
@@ -158,7 +179,47 @@ IntelliJ에 플러그인이 늘어날수록 확실히 느려지는 것을 매우
 
 <br>
 
-복합 인덱스는 순서가 중요한데 (user_id, symbol, created_at) 인덱스는 user_id 색인 -> symbol 색인 -> created_at 순서로 색인이 되기 때문에 중간에 symbol 없이 조회를 하면 해당 인덱스 활용이 어렵다.
+인덱스는 책으로 치자면 목차와 같다. 예를 들어보자.
+
+<br>
+
+어떤 요리책의 목차가 **"저자 → 요리 종류 → 레시피"** 순서로 정리되어 있다고 생각해보자.
+
+<br>
+
+```
+김요리
+  ├─ 한식
+  │    ├─ 김치찌개
+  │    └─ 된장찌개
+  ├─ 양식
+  │    ├─ 파스타
+  │    └─ 스테이크
+  └─ 중식
+       └─ 짜장면
+
+이요리
+  ├─ 한식
+  │    └─ 불고기
+  └─ 양식
+       └─ 리조또
+```
+
+<br>
+
+이 목차에서 **"김요리의 한식 레시피 중에 김치찌개 찾아줘"** 라고 하면? 저자 → 요리 종류 → 레시피 순서 그대로니까 목차를 쭉 따라가면 바로 찾을 수 있다.
+
+<br>
+
+그런데 **"김요리의 김치찌개 레시피 찾아줘"** 라고 하면? 요리 종류를 건너뛰고 바로 레시피를 찾아야 하는데, 목차는 요리 종류별로 나뉘어 있으니 한식에도 김치찌개가 있는지, 양식에도 있는지, 중식에도 있는지 전부 하나하나 뒤져봐야 한다.
+
+<br>
+
+이게 바로 복합 인덱스에서 중간 컬럼을 건너뛸 때 벌어지는 일이다. **(user_id, symbol, created_at)** 인덱스는 user_id → symbol → created_at 순서로 색인이 되기 때문에 중간에 symbol 없이 user_id + created_at 으로 조회하면 해당 인덱스를 효율적으로 활용하기 어렵다.
+
+<br>
+
+그래서 **"저자 → 레시피"** 순서로 정리된 별도의 목차, 즉 **(user_id, created_at)** 복합 인덱스가 따로 필요한 것이다.
 
 <br>
 
@@ -166,7 +227,7 @@ IntelliJ에 플러그인이 늘어날수록 확실히 느려지는 것을 매우
 
 <br>
 
-> user_id + created_at 검색은 인덱스 활용이 어렵지 않아?
+> user_id + created_at 검색은 해당 인덱스 활용이 어렵지 않아?
 
 <br>
 
@@ -213,7 +274,8 @@ BackgroundForClaude.txt
 
 <br>
 
-``` mariadb
+``` sql
+
 -- =============================================
 -- Web Coin Trader - DDL
 -- =============================================
@@ -239,9 +301,9 @@ CREATE TABLE pattern_queue (
                                id                  BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '패턴 큐 id',
                                user_id             BIGINT        NOT NULL                 COMMENT '사용자 id',
                                symbol              VARCHAR(100)  NOT NULL                 COMMENT '코인 종류',
-                               use_yn              VARCHAR(2)    NOT NULL DEFAULT 'N'     COMMENT '활성화 여부 (Y/N)',
+                               use_yn              BOOLEAN       NOT NULL DEFAULT FALSE   COMMENT '활성화 여부',
                                activated_at        DATETIME      NULL                     COMMENT '활성화 시점',
-                               created_at          DATETIME      NOT NULL                 COMMENT '생성일',
+                               created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일',
                                updated_at          DATETIME      NULL                     COMMENT '수정일',
                                trigger_seconds     INT           NOT NULL                 COMMENT '기준 시간(초)',
                                trigger_rate        DECIMAL(5,2)  NOT NULL                 COMMENT '기준 비율(%)',
@@ -276,7 +338,7 @@ CREATE TABLE pattern (
                          leverage          INT           NOT NULL                 COMMENT '레버리지',
                          stop_loss_rate    DECIMAL(5,2)  NULL                     COMMENT '손절 기준 비율',
                          take_profit_rate  DECIMAL(5,2)  NULL                     COMMENT '익절 기준 비율',
-                         amount            DECIMAL(10,2) NULL                     COMMENT '투자 금액',
+                         amount            DECIMAL(10,2) NOT NULL                 COMMENT '투자 금액',
                          pattern_order     INT           NOT NULL                 COMMENT '패턴 순서 (1 or 2)',
                          PRIMARY KEY (id),
                          CONSTRAINT fk_pattern_step FOREIGN KEY (step_id) REFERENCES pattern_step (id)
@@ -308,10 +370,10 @@ CREATE TABLE trade_history (
                                symbol          VARCHAR(100)  NOT NULL                 COMMENT '코인 종류 (스냅샷)',
                                side            VARCHAR(10)   NOT NULL                 COMMENT '체결 방향 (LONG / SHORT)',
                                executed_price  DECIMAL(20,8) NOT NULL                 COMMENT '체결 가격',
-                               order_id        VARCHAR(100)  NULL                     COMMENT 'ByBit 주문 id',
+                               order_id        VARCHAR(100)  NOT NULL                 COMMENT 'ByBit 주문 id',
                                created_at      DATETIME      NOT NULL                 COMMENT '체결 일시',
                                order_result    VARCHAR(10)   NOT NULL                 COMMENT '주문 결과 (SUCCESS / FAILED)',
-                               error_message   TEXT          NULL                     COMMENT '실패 사유',
+                               error_message   VARCHAR(500)  NULL                     COMMENT '실패 사유',
                                PRIMARY KEY (id)
 );
 
@@ -327,8 +389,8 @@ CREATE TABLE pattern_history (
                                  user_id          BIGINT        NOT NULL                 COMMENT '사용자 id (스냅샷)',
                                  symbol           VARCHAR(100)  NOT NULL                 COMMENT '코인 종류 (스냅샷)',
                                  action           VARCHAR(10)   NOT NULL                 COMMENT '등록 종류 (create / update / delete)',
-                                 created_at       DATETIME      NOT NULL                 COMMENT '등록일',
-                                 block_list       TEXT          NOT NULL                 COMMENT '패턴 단계 블록 집합 (JSON)',
+                                 created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일',
+                                 block_list       VARCHAR(200)  NOT NULL                 COMMENT '패턴 단계 블록 집합 (JSON)',
                                  PRIMARY KEY (id)
 );
 
