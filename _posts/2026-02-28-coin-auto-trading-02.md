@@ -370,7 +370,7 @@ CREATE TABLE trade_history (
                                symbol          VARCHAR(100)  NOT NULL                 COMMENT '코인 종류 (스냅샷)',
                                side            VARCHAR(10)   NOT NULL                 COMMENT '체결 방향 (LONG / SHORT)',
                                executed_price  DECIMAL(20,8) NOT NULL                 COMMENT '체결 가격',
-                               order_id        VARCHAR(100)  NOT NULL                 COMMENT 'ByBit 주문 id',
+                               order_id        VARCHAR(100)  NULL                     COMMENT 'ByBit 주문 id',
                                created_at      DATETIME      NOT NULL                 COMMENT '체결 일시',
                                order_result    VARCHAR(10)   NOT NULL                 COMMENT '주문 결과 (SUCCESS / FAILED)',
                                error_message   VARCHAR(500)  NULL                     COMMENT '실패 사유',
@@ -396,6 +396,7 @@ CREATE TABLE pattern_history (
 
 CREATE INDEX idx_pattern_history_user_symbol ON pattern_history (user_id, symbol);
 CREATE INDEX idx_pattern_history_user_date ON pattern_history (user_id, created_at);
+
 
 ```
 
