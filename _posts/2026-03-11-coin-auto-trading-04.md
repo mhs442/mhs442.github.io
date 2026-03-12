@@ -10,7 +10,7 @@ published: true
 # 껍데기부터 만들자
 
 
-[3편 보러가기](https://mhs442.github.io/2026-03-08/coin-auto-trading-03)
+[3편 보러가기](https://mhs442.github.io/2026-03-09/coin-auto-trading-03)
 
 <br>
 
