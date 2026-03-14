@@ -68,7 +68,7 @@ public String signup(SignupRequest request, Model model) {
  * @throws CustomException 비밀번호 불일치(PASSWORD_MISMATCH), 전화번호 중복(DUPLICATE_PHONE_NUMBER),
  *                         API Key 무효(INVALID_API_KEY) 시 예외 발생
  */
-@Transactional(rollbackFor = Exception.class)
+@Transactional
 public void signup(SignupRequest request) {
     // 1. 비밀번호 일치 확인
     if (!request.getPassword().equals(request.getPasswordConfirm())) {
@@ -105,7 +105,7 @@ public void signup(SignupRequest request) {
 
 <br>
 
-여기서 알아야 할 건, `Transaction`을 어떤 예외가 발생하든 모두 실패하도록 설정했다. 그리고 거래에 필요한 `API_KEY`와 `API_SECRET`유효성을 검증하기 위해 검증 로직을 따로 두어서 호출해서 사용하기로 했다.
+여기서 알아야 할 건, `@Transactional`을 선언해서 회원가입 과정 중 문제가 생기면 롤백되도록 설정했다. 그리고 거래에 필요한 `API_KEY`와 `API_SECRET`유효성을 검증하기 위해 검증 로직을 따로 두어서 호출해서 사용하기로 했다.
 
 <br>
 
@@ -289,12 +289,14 @@ public interface MarketClient {
 
 <br>
 
-응답 데이터는 `FindTickerResponse`로 매핑했다.
+응답 데이터는 `FindTickerResponse`로 매핑했다. 여기서 `@JsonIgnoreProperties(ignoreUnknown = true)`를 붙여줬는데, Bybit API 응답에는 내가 필요로 하지 않는 필드들도 잔뜩 내려온다. 이 어노테이션이 없으면 매핑 객체에 정의하지 않은 필드가 응답에 포함되어 있을 때 역직렬화 에러가 발생하기 때문에 필수로 넣어줘야 한다.
 
 <br>
 
 ``` java
-public class FindTickerResponse extends ByBItMasterDTO {
+@Getter @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class FindTickerResponse extends BybitMasterDTO {
 
     private Result result;      // 티커 조회 결과
 
@@ -321,7 +323,25 @@ public class FindTickerResponse extends ByBItMasterDTO {
 
 <br>
 
-그리고 이 데이터를 대시보드에 뿌려주는 컨트롤러는 다음과 같다.
+그 중에 `BybitMasterDTO` 객체를 상속받고 있는데 해당 객체는 다음과 같다.
+
+<br>
+
+```java
+@Getter @Setter
+public abstract class BybitMasterDTO {
+    private String retCode;     // 응답 코드 ("0": 정상)
+    private String retMsg;      // 응답 메시지 (예: "OK", 오류 설명)
+}
+```
+
+<br>
+
+Bybit API 응답 객체는 모두 응답코드(`retCode`)와 응답메시지(`retMsg`)를 함께 반환하고 있어 하나의 파일로 관리하기 위해 마스터 객체를 생성해서 사용하기로 했다.
+
+<br>
+
+이렇게 조합된 데이터를 대시보드에 뿌려주는 컨트롤러는 다음과 같다.
 
 <br>
 
@@ -341,7 +361,7 @@ public String dashBoard(Model model) {
 
 <br>
 
-`MarketService`에서 코인 목록을 가져와 `Model`에 담고, Thymeleaf 템플릿에서 뿌려주는 구조다. 심플하다.
+`MarketService`에서 코인 목록을 가져와 `Model`에 담고, Thymeleaf 템플릿에서 뿌려주는 구조다. 간단하다!
 
 <br>
 
