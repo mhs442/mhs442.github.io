@@ -397,3 +397,5 @@ public String dashBoard(Model model) {
 
 <br>
 
+[6편 보러가기](https://mhs442.github.io/2026-03-14/coin-auto-trading-06)
+
