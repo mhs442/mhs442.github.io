@@ -276,127 +276,120 @@ BackgroundForClaude.txt
 
 ``` sql
 
--- =============================================
--- Web Coin Trader - DDL
--- =============================================
+CREATE TABLE pattern
+(
+    id               bigint         NOT NULL AUTO_INCREMENT COMMENT '패턴 id',
+    step_id          bigint         NOT NULL COMMENT '패턴별 단계 id',
+    leverage         int            NOT NULL COMMENT '레버리지',
+    stop_loss_rate   decimal(5, 2)  NULL     COMMENT '손절 기준 비율',
+    take_profit_rate decimal(5, 2)  NULL     COMMENT '익정 기준 비율',
+    amount           decimal(10, 2) NOT NULL COMMENT '투자 금액',
+    pattern_order    int            NOT NULL COMMENT '패턴 순서(1 or 2)',
+    PRIMARY KEY (id)
+) COMMENT '패턴';
 
--- 1. users (사용자 정보)
--- =============================================
-CREATE TABLE users (
-                       id            BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '사용자 id',
-                       username      VARCHAR(20)   NOT NULL                 COMMENT '사용자 이름',
-                       phone_number  VARCHAR(20)   NOT NULL                 COMMENT '휴대폰 번호',
-                       email         VARCHAR(50)   NOT NULL                 COMMENT '이메일',
-                       password      VARCHAR(200)  NOT NULL                 COMMENT '패스워드',
-                       api_key       VARCHAR(500)  NOT NULL                 COMMENT 'Bybit API Key (AES 암호화)',
-                       api_secret    VARCHAR(500)  NOT NULL                 COMMENT 'Bybit API Secret (AES 암호화)',
-                       PRIMARY KEY (id),
-                       CONSTRAINT uq_users_phone UNIQUE (phone_number),
-                       CONSTRAINT uq_users_email UNIQUE (email)
-);
+CREATE TABLE pattern_block
+(
+    id          bigint      NOT NULL AUTO_INCREMENT COMMENT '패턴 블록 id',
+    pattern_id  bigint      NOT NULL COMMENT '패턴 id',
+    side        varchar(10) NOT NULL COMMENT '투자 방향',
+    block_order int         NOT NULL COMMENT '블록 순서(최대 6)',
+    is_leaf     boolean     NOT NULL DEFAULT false COMMENT '마지막 블록 여부',
+    PRIMARY KEY (id)
+) COMMENT '패턴 블록';
 
--- 2. pattern_queue (패턴 큐)
--- =============================================
-CREATE TABLE pattern_queue (
-                               id                  BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '패턴 큐 id',
-                               user_id             BIGINT        NOT NULL                 COMMENT '사용자 id',
-                               symbol              VARCHAR(100)  NOT NULL                 COMMENT '코인 종류',
-                               use_yn              BOOLEAN       NOT NULL DEFAULT FALSE   COMMENT '활성화 여부',
-                               activated_at        DATETIME      NULL                     COMMENT '활성화 시점',
-                               created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일',
-                               updated_at          DATETIME      NULL                     COMMENT '수정일',
-                               trigger_seconds     INT           NOT NULL                 COMMENT '기준 시간(초)',
-                               trigger_rate        DECIMAL(5,2)  NOT NULL                 COMMENT '기준 비율(%)',
-                               is_full             BOOLEAN       NOT NULL DEFAULT FALSE   COMMENT '패턴 단계 최대 여부',
-                               current_step_id     BIGINT        NULL                     COMMENT '현재 진행중 단계 id (FK 없음)',
-                               current_pattern_id  BIGINT        NULL                     COMMENT '현재 진행중인 패턴 id (FK 없음)',
-                               current_block_order INT           NULL                     COMMENT '현재 진행중인 블록 순서',
-                               PRIMARY KEY (id),
-                               CONSTRAINT fk_pattern_queue_user FOREIGN KEY (user_id) REFERENCES users (id)
-);
+CREATE TABLE pattern_history
+(
+    id              bigint       NOT NULL AUTO_INCREMENT COMMENT '큐 히스토리 id',
+    pattern_step_id bigint       NOT NULL COMMENT '패턴 단계 id',
+    user_id         bigint       NOT NULL COMMENT '사용자 id',
+    symbol          varchar(100) NOT NULL COMMENT '코인 종류',
+    action          varchar(10)  NOT NULL COMMENT '등록 종류(create, update, delete)',
+    created_at      datetime     NOT NULL DEFAULT current_timestamp COMMENT '등록일',
+    block_list      varchar(200) NOT NULL COMMENT '패턴 단계 블록 집합',
+    PRIMARY KEY (id)
+) COMMENT '패턴 단계 히스토리';
 
-CREATE INDEX idx_pattern_queue_user_symbol ON pattern_queue (user_id, symbol);
+CREATE TABLE pattern_queue
+(
+    id                  bigint       NOT NULL AUTO_INCREMENT COMMENT '패턴 큐 id',
+    user_id             bigint       NOT NULL COMMENT '사용자 id',
+    symbol              varchar(100) NOT NULL COMMENT '코인 종류',
+    is_active              boolean      NOT NULL DEFAULT false COMMENT '활성화 여부',
+    activated_at        datetime     NULL     COMMENT '활성화 시점',
+    created_at          datetime     NOT NULL DEFAULT current_timestamp COMMENT '생성일',
+    updated_at          datetime     NULL     COMMENT '수정일',
+    trigger_seconds     int          NOT NULL COMMENT '기준 시간(초)',
+    trigger_rate        decimal(5,2) NOT NULL COMMENT '기준 비율(%)',
+    is_full             boolean      NOT NULL COMMENT '패턴 단계 최대 여부',
+    current_step_id     bigint       NULL     COMMENT '현재 진행중인 단계 id',
+    current_pattern_id  bigint       NULL     COMMENT '현재 진행중인 패턴 id',
+    current_block_order int          NULL     COMMENT '현재 진행중인 블록 순서',
+    PRIMARY KEY (id)
+) COMMENT '패턴 큐';
 
--- 3. pattern_step (패턴별 단계)
--- =============================================
-CREATE TABLE pattern_step (
-                              id          BIGINT   NOT NULL AUTO_INCREMENT  COMMENT '패턴별 단계 id',
-                              queue_id    BIGINT   NOT NULL                 COMMENT '패턴 큐 id',
-                              step_level  INT      NOT NULL                 COMMENT '단계 레벨 (최대 20)',
-                              is_full     BOOLEAN  NOT NULL DEFAULT FALSE   COMMENT '패턴 최대 여부',
-                              PRIMARY KEY (id),
-                              CONSTRAINT fk_pattern_step_queue FOREIGN KEY (queue_id) REFERENCES pattern_queue (id)
-);
+CREATE TABLE pattern_step
+(
+    id         bigint  NOT NULL AUTO_INCREMENT COMMENT '패턴별 단계 id',
+    queue_id   bigint  NOT NULL COMMENT '패턴 큐 id',
+    step_level int     NOT NULL COMMENT '단계 레벨(최대 20)',
+    is_full    boolean NOT NULL COMMENT '패턴 최대 여부',
+    PRIMARY KEY (id)
+) COMMENT '패턴별 단계';
 
-CREATE INDEX idx_pattern_step_queue_level ON pattern_step (queue_id, step_level);
+CREATE TABLE trade_history
+(
+    id             bigint         NOT NULL AUTO_INCREMENT COMMENT '거래 히스토리 id',
+    queue_step_id  bigint         NOT NULL COMMENT '패턴별 단계 id',
+    user_id        bigint         NOT NULL COMMENT '사용자 id',
+    symbol         varchar(100)   NOT NULL COMMENT '코인 종류',
+    side           varchar(10)    NOT NULL COMMENT '투자 방향',
+    amount         decimal(20, 8) NOT NULL COMMENT '주문 금액 (USDT)',
+    executed_price decimal(20, 8) NOT NULL COMMENT '체결 가격',
+    order_id       varchar(100)   NULL     COMMENT 'ByBit 주문 id',
+    created_at     datetime       NOT NULL COMMENT '체결 일시',
+    order_result   varchar(10)    NOT NULL COMMENT '주문 결과',
+    error_message  varchar(500)   NULL     COMMENT '실패 사유',
+    PRIMARY KEY (id)
+) COMMENT '거래 히스토리';
 
--- 4. pattern (패턴)
--- =============================================
-CREATE TABLE pattern (
-                         id                BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '패턴 id',
-                         step_id           BIGINT        NOT NULL                 COMMENT '패턴별 단계 id',
-                         leverage          INT           NOT NULL                 COMMENT '레버리지',
-                         stop_loss_rate    DECIMAL(5,2)  NULL                     COMMENT '손절 기준 비율',
-                         take_profit_rate  DECIMAL(5,2)  NULL                     COMMENT '익절 기준 비율',
-                         amount            DECIMAL(10,2) NOT NULL                 COMMENT '투자 금액',
-                         pattern_order     INT           NOT NULL                 COMMENT '패턴 순서 (1 or 2)',
-                         PRIMARY KEY (id),
-                         CONSTRAINT fk_pattern_step FOREIGN KEY (step_id) REFERENCES pattern_step (id)
-);
+CREATE TABLE user
+(
+    id           bigint       NOT NULL AUTO_INCREMENT COMMENT '사용자 id',
+    username     varchar(20)  NOT NULL COMMENT '사용자 이름',
+    phone_number varchar(20)  NOT NULL COMMENT '휴대폰 번호',
+    email        varchar(50)  NOT NULL COMMENT '이메일',
+    password     varchar(200) NOT NULL COMMENT '패스워드',
+    api_key      varchar(500) NOT NULL COMMENT 'ByBit API Key',
+    api_secret   varchar(500) NOT NULL COMMENT 'ByBit API Secret',
+    PRIMARY KEY (id)
+) COMMENT '사용자 정보';
 
-CREATE INDEX idx_pattern_step_order ON pattern (step_id, pattern_order);
+ALTER TABLE user
+    ADD CONSTRAINT UQ_phone_number UNIQUE (phone_number);
 
--- 5. pattern_block (패턴 블록)
--- =============================================
-CREATE TABLE pattern_block (
-                               id           BIGINT      NOT NULL AUTO_INCREMENT  COMMENT '패턴 블록 id',
-                               pattern_id   BIGINT      NOT NULL                 COMMENT '패턴 id',
-                               side         VARCHAR(10) NOT NULL                 COMMENT '투자 방향 (LONG / SHORT)',
-                               block_order  INT         NOT NULL                 COMMENT '블록 순서 (최대 6)',
-                               is_leaf      BOOLEAN     NOT NULL DEFAULT FALSE   COMMENT '마지막 블록 여부',
-                               PRIMARY KEY (id),
-                               CONSTRAINT fk_pattern_block_pattern FOREIGN KEY (pattern_id) REFERENCES pattern (id)
-);
+ALTER TABLE user
+    ADD CONSTRAINT UQ_email UNIQUE (email);
 
-CREATE INDEX idx_pattern_block_order ON pattern_block (pattern_id, block_order);
+ALTER TABLE pattern_queue
+    ADD CONSTRAINT FK_user_TO_pattern_queue
+        FOREIGN KEY (user_id)
+            REFERENCES user (id);
 
--- 6. trade_history (거래 히스토리)
---    스냅샷 방식: 원본 삭제와 무관하게 거래 기록 보존, FK 없음
--- =============================================
-CREATE TABLE trade_history (
-                               id              BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '거래 히스토리 id',
-                               queue_step_id   BIGINT        NOT NULL                 COMMENT '패턴별 단계 id (참조용, FK 없음)',
-                               user_id         BIGINT        NOT NULL                 COMMENT '사용자 id (스냅샷)',
-                               symbol          VARCHAR(100)  NOT NULL                 COMMENT '코인 종류 (스냅샷)',
-                               side            VARCHAR(10)   NOT NULL                 COMMENT '체결 방향 (LONG / SHORT)',
-                               executed_price  DECIMAL(20,8) NOT NULL                 COMMENT '체결 가격',
-                               order_id        VARCHAR(100)  NULL                     COMMENT 'ByBit 주문 id',
-                               created_at      DATETIME      NOT NULL                 COMMENT '체결 일시',
-                               order_result    VARCHAR(10)   NOT NULL                 COMMENT '주문 결과 (SUCCESS / FAILED)',
-                               error_message   VARCHAR(500)  NULL                     COMMENT '실패 사유',
-                               PRIMARY KEY (id)
-);
+ALTER TABLE pattern_step
+    ADD CONSTRAINT FK_pattern_queue_TO_pattern_step
+        FOREIGN KEY (queue_id)
+            REFERENCES pattern_queue (id);
 
-CREATE INDEX idx_trade_user_date ON trade_history (user_id, created_at);
-CREATE INDEX idx_trade_user_symbol_date ON trade_history (user_id, symbol, created_at);
+ALTER TABLE pattern
+    ADD CONSTRAINT FK_pattern_step_TO_pattern
+        FOREIGN KEY (step_id)
+            REFERENCES pattern_step (id);
 
--- 7. pattern_history (패턴 단계 히스토리)
---    스냅샷 방식: FK 없음
--- =============================================
-CREATE TABLE pattern_history (
-                                 id               BIGINT        NOT NULL AUTO_INCREMENT  COMMENT '패턴 단계 히스토리 id',
-                                 pattern_step_id  BIGINT        NOT NULL                 COMMENT '패턴 단계 id (참조용, FK 없음)',
-                                 user_id          BIGINT        NOT NULL                 COMMENT '사용자 id (스냅샷)',
-                                 symbol           VARCHAR(100)  NOT NULL                 COMMENT '코인 종류 (스냅샷)',
-                                 action           VARCHAR(10)   NOT NULL                 COMMENT '등록 종류 (create / update / delete)',
-                                 created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일',
-                                 block_list       VARCHAR(200)  NOT NULL                 COMMENT '패턴 단계 블록 집합 (JSON)',
-                                 PRIMARY KEY (id)
-);
-
-CREATE INDEX idx_pattern_history_user_symbol ON pattern_history (user_id, symbol);
-CREATE INDEX idx_pattern_history_user_date ON pattern_history (user_id, created_at);
-
+ALTER TABLE pattern_block
+    ADD CONSTRAINT FK_pattern_TO_pattern_block
+        FOREIGN KEY (pattern_id)
+            REFERENCES pattern (id);
 
 ```
 
